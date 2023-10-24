@@ -1,7 +1,10 @@
 ## Ignore LARGE FILES
 aws-schema.json
-
+# Import your own examples
 assets/examples
+
+# Don't commit cache
+assets/cache
 
 # .tfstate files
 *.tfstate
