@@ -1,0 +1,7 @@
+# This list contains the properties that need to be added
+# to the association list ()
+whitelist:
+  aws_instance:
+    key_name: aws_key_pair
+
+blacklist:
