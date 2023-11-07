@@ -1,7 +1,7 @@
 import argparse
 import os
 from pprint import pprint
-from tfmc.cache import cache
+from tfmc.cache import cache, clear_cache
 from tfmc.class_transformer import transform
 from tfmc.loader import load_tf_model
 from tfmc.schema_gen import generate_schema
@@ -21,6 +21,7 @@ os.system("color")
 
 # Load the metamodel
 if args.nocache:
+    clear_cache()
     schema = generate_schema()
 else:
     schema = cache("aws-schema-mm", lambda: generate_schema())
