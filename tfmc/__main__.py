@@ -30,16 +30,16 @@ else:
 # Path is /assets/examples/<name>
 model = load_tf_model("aws_ec2_ebs_docker_host")
 
+# resources are infrastructure object
 resources = model["resources"]
+# data are object defined outside of Terraform
+data = model["data"]  # TODO: Should we really handle these?
 
-data = model["data"]
-variables = model["variable"]  # do we need this?
-locals = model["locals"]  # do we need this?
-output = model["output"]  # do we need this?
+variables = model["variable"]  # do we need this? probably are resolved by the parser
+locals = model["locals"]  # do we need this? maybe
+output = model["output"]  # do we need this? probably not
 
 refs = transform_resources(resources, schema)
 
-for res in refs.im_resources.values():
-    print(res)
 
-# TODO: Handle associations
+refs.encode()

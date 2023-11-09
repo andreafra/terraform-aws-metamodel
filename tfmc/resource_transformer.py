@@ -2,15 +2,8 @@
 # a collection of standardized resources.
 
 from dataclasses import dataclass
-from tfmc.resource_class import Association, Attribute, Resource
+from tfmc.resource_class import Association, Attribute, Refs, Resource
 from functools import reduce
-
-
-@dataclass
-class Refs:
-    schema: dict[str, dict]
-    im_resources: dict[str, Resource]
-    im_uuids: dict[str, Resource]
 
 
 def transform_resources(resources: dict, schema: dict):
@@ -73,11 +66,11 @@ def handle_nested_block(
     assoc = Association(id, [], f"{parent_resource.category}::{category}")
     if isinstance(nested_block, list):
         for block in nested_block:
-            assoc.target_ids.append(
+            assoc.targets.append(
                 add_transform_resource(id, category, block, schema, refs)
             )
     elif isinstance(nested_block, dict):
-        assoc.target_ids.append(
+        assoc.targets.append(
             add_transform_resource(id, category, nested_block, schema, refs)
         )
     parent_resource.assocs.append(assoc)

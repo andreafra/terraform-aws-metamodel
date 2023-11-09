@@ -18,7 +18,7 @@ class Attribute:
 @dataclass
 class Association:
     id: str
-    target_ids: list["Resource"]
+    targets: list[str]  # uuid of resource
     type: str
 
     def encode(self):
@@ -28,7 +28,7 @@ class Association:
         # if len(self.target_ids) > 0 and isinstance(self.target_ids[0], object):
         #     items = list(map(lambda x: colored(x.id, "cyan"), self.target_ids))
         #     return f"{colored(self.id, 'magenta')}[{colored(self.type, 'light_green')}]={items}"
-        return f"{colored(self.id, 'magenta')}[{colored(self.type, 'light_green')}]={colored(self.target_ids, 'cyan')}"
+        return f"{colored(self.id, 'magenta')}[{colored(self.type, 'light_green')}]={colored(self.targets, 'cyan')}"
 
 
 @dataclass
@@ -53,3 +53,15 @@ class Resource:
             if self.assocs
             else "\t<empty>"
         )
+
+
+@dataclass
+class Refs:
+    schema: dict[str, dict]
+    im_resources: dict[str, Resource]
+    im_uuids: dict[str, Resource]
+
+    def encode(self):
+        categories = list(self.schema.keys())
+        associations = [res.assocs for res in self.im_resources.values()]
+        attributes = [res.attrs for res in self.im_resources.values()]
