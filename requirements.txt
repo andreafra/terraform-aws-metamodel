@@ -1,0 +1,4 @@
+termcolor
+pyyaml
+tfparse
+z3-solver
