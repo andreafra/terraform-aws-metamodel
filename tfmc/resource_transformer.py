@@ -1,7 +1,6 @@
 # This module should take an annotated schema as input and return
 # a collection of standardized resources.
 
-from dataclasses import dataclass
 from tfmc.resource_class import Association, Attribute, Refs, Resource
 from functools import reduce
 
@@ -62,7 +61,6 @@ def handle_nested_block(
     refs: Refs,
 ):
     """Recursively transform nested elements."""
-    # TODO: add associations from parent->child
     assoc = Association(id, [], f"{parent_resource.category}::{category}")
     if isinstance(nested_block, list):
         for block in nested_block:
@@ -73,6 +71,7 @@ def handle_nested_block(
         assoc.targets.append(
             add_transform_resource(id, category, nested_block, schema, refs)
         )
+    # add associations from parent->child
     parent_resource.assocs.append(assoc)
 
 

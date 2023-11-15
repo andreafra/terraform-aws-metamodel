@@ -16,15 +16,12 @@ argparser.add_argument(
 
 args = argparser.parse_args()
 
-# Enable colored text in output
-os.system("color")
-
 # Load the metamodel
-if args.nocache:
-    clear_cache()
-    schema = generate_schema()
-else:
-    schema = cache("aws-schema-mm", lambda: generate_schema())
+# if args.nocache:
+#     clear_cache()
+schema = generate_schema()
+# else:
+#     schema = cache("aws-schema-mm", lambda: generate_schema())
 
 # Load a file by folder name
 # Path is /assets/examples/<name>

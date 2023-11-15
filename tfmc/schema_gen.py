@@ -21,6 +21,13 @@ class AWS_schemas:
     data_sources: dict[str, dict]
 
 
+@dataclass
+class Schema:
+    categories: list[str]
+    associations: dict[str, dict]
+    attributes: dict[str, dict]
+
+
 def load_json_schema(data):
     schema = json.loads(data)
     aws = schema["provider_schemas"]["registry.terraform.io/hashicorp/aws"]
@@ -87,6 +94,46 @@ def add_typed_associations_to_attrs(resources, custom_fks=None):
     return resources
 
 
+def flatten_schema(schema) -> Schema:
+    categories = []
+    associations = {}
+    attributes = {}
+
+    def handle_block(rk, rv, parentk=""):
+        props = rv.get("block")
+        categories.append(rk)
+        all_attrs = props.get("attributes", {})
+        for k, v in all_attrs.items():
+            propkey = f"{rk}::{k}"
+            if existing_v := associations.get(propkey):
+                if existing_v != v:
+                    if parentk != "":
+                        propkey = f"{parentk}>>{propkey}"
+            if v.get("mm_type"):
+                associations[propkey] = v
+            else:
+                attributes[propkey] = v
+        # add assoc for nested blocks
+        associations[f"{parentk}::{rk}"] = {
+            "type": "list",
+            "mm_type": rk,
+            "mm_nested_block": True,
+        }
+
+        # handle nested blocks
+        nested_blocks = props.get("block_types", {})
+        for nbk, nbv in nested_blocks.items():
+            handle_block(nbk, nbv, rk)
+
+    # apply to top level
+    for rk, rv in schema.items():
+        handle_block(rk, rv)
+
+    categories.sort()
+
+    return Schema(categories, associations, attributes)
+
+
 def generate_schema():
     """Generates an annotated schema starting from the `aws-schema.json` input file
     in the `assets` resource folder."""
@@ -97,4 +144,8 @@ def generate_schema():
         files(schemas).joinpath("custom.yaml").read_text(), Loader=YamlLoader
     )
 
-    return add_typed_associations_to_attrs(aws_schemas.resources, custom_fks)
+    typed_schema = add_typed_associations_to_attrs(aws_schemas.resources, custom_fks)
+
+    flat_schema = flatten_schema(typed_schema)
+
+    return flat_schema

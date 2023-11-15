@@ -5,3 +5,5 @@ whitelist:
     key_name: aws_key_pair
 
 blacklist:
+  - .*_state$
+  - .*_type$

@@ -8,9 +8,6 @@ class Attribute:
     value: any
     type: any
 
-    def encode(self):
-        pass
-
     def __repr__(self) -> str:
         return f"{colored(self.id, 'yellow')}[{colored(self.type, 'light_green')}]={colored(self.value, 'cyan')}"
 
@@ -20,9 +17,6 @@ class Association:
     id: str
     targets: list[str]  # uuid of resource
     type: str
-
-    def encode(self):
-        pass
 
     def __repr__(self) -> str:
         # if len(self.target_ids) > 0 and isinstance(self.target_ids[0], object):
@@ -63,5 +57,10 @@ class Refs:
 
     def encode(self):
         categories = list(self.schema.keys())
-        associations = [res.assocs for res in self.im_resources.values()]
-        attributes = [res.attrs for res in self.im_resources.values()]
+        associations = [res for rkey, res in self.schema.items()]
+        # associations = [res.assocs for res in self.im_resources.values()]
+        # attributes = [res.attrs for res in self.im_resources.values()]
+
+        print(categories)
+        print(associations)
+        # print(attributes)
