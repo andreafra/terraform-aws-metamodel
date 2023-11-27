@@ -4,8 +4,10 @@
 from tfmc.resource_class import Association, Attribute, Refs, Resource
 from functools import reduce
 
+from tfmc.schema_gen import Schema
 
-def transform_resources(resources: dict, schema: dict):
+
+def transform_resources(resources: dict, schema: Schema):
     refs = Refs(schema, {}, {})
 
     # Transform Resources
@@ -18,15 +20,16 @@ def transform_resources(resources: dict, schema: dict):
 
         # check if metamodel specify this category
         add_transform_resource(
-            f"{category}::{id}", category, props, refs.schema.get(category), refs
+            f"{category}::{id}",
+            category,
+            props,
+            refs,
         )
 
     return refs
 
 
-def add_transform_resource(
-    id: str, category: str, props: dict, schema: dict, refs: Refs
-) -> None:
+def add_transform_resource(id: str, category: str, props: dict, refs: Refs) -> Resource:
     res = Resource(id, category, [], [], tfmeta=props["__tfmeta"])
 
     for prop_key, prop in props.items():
@@ -36,18 +39,26 @@ def add_transform_resource(
         prop_id = f"{id}::{prop_key}"
 
         # look up in the schema if the property is an assoc/attr or a block
-        res_schema = schema.get("block")
-        if attr_schema := res_schema.get("attributes", {}).get(prop_key):
-            instance = classify_and_transform_prop(prop_id, prop, attr_schema)
-            if isinstance(instance, Association):
-                res.assocs.append(instance)
+        schema_prop_id = f"{category}::{prop_key}"
+
+        if attr_schema := refs.schema.attributes.get(schema_prop_id):
+            # TODO: handle 'prop' when has a weird type!
+            res.attrs.append(Attribute(prop_id, prop, attr_schema.get("type")))  # type: ignore
+        elif assoc_schema := refs.schema.associations.get(schema_prop_id):
+            if not assoc_schema.get("mm_nested_block"):
+                res.assocs.append(
+                    Association(
+                        prop_id,
+                        get_assoc_refs(prop),
+                        [],
+                        assoc_schema.get("mm_type"),  # type: ignore
+                        schema_prop_id,
+                    )
+                )
             else:
-                res.attrs.append(instance)
+                handle_nested_block(prop_id, prop_key, prop, res, refs)
 
-        elif nested_block_schema := res_schema.get("block_types", {}).get(prop_key):
-            handle_nested_block(prop_id, prop_key, prop, nested_block_schema, res, refs)
-
-    refs.im_resources[id] = refs.im_uuids[props.get("id")] = res
+    refs.im_resources[id] = refs.im_uuids[str(props.get("id"))] = res
 
     return res
 
@@ -56,36 +67,28 @@ def handle_nested_block(
     id: str,
     category: str,
     nested_block: list[dict] | dict,
-    schema: dict,
     parent_resource: Resource,
     refs: Refs,
 ):
     """Recursively transform nested elements."""
-    assoc = Association(id, [], f"{parent_resource.category}::{category}")
+    assoc = Association(
+        id,
+        [],
+        [],
+        f"{parent_resource.category}::{category}",
+        f"{parent_resource.category}::{category}",
+    )
     if isinstance(nested_block, list):
         for block in nested_block:
-            assoc.targets.append(
-                add_transform_resource(id, category, block, schema, refs)
+            assoc.target_refs.append(
+                add_transform_resource(id, category, props=block, refs=refs)
             )
     elif isinstance(nested_block, dict):
-        assoc.targets.append(
-            add_transform_resource(id, category, nested_block, schema, refs)
+        assoc.target_refs.append(
+            add_transform_resource(id, category, props=nested_block, refs=refs)
         )
     # add associations from parent->child
     parent_resource.assocs.append(assoc)
-
-
-def classify_and_transform_prop(prop_id, prop_value, prop_schema):
-    """Returns the correct transformation of a property as either an Association or an Attribute.
-    `prop_key` is guaranteed to exist, here we check if `prop_schema` has `mm_type` or not
-    to determine whether its"""
-    if mm_type := prop_schema.get("mm_type"):
-        # it's an association
-        return Association(prop_id, get_assoc_refs(prop_value), mm_type)
-    else:
-        # it's an attribute
-        # TODO: Handle composite types (e.g. ['map', 'string']) # DO THIS FIRST
-        return Attribute(prop_id, prop_value, prop_schema.get("type"))
 
 
 def get_assoc_refs(value) -> list[str]:
@@ -93,9 +96,13 @@ def get_assoc_refs(value) -> list[str]:
         return reduce(list.__add__, map(get_assoc_refs, value))
     else:
         if isinstance(value, dict):
-            return [value.get("__ref__")]
+            return [str(value.get("__ref__"))]
         elif isinstance(value, str):
             return [value]
         else:
             print(f"[Error] Unknown assoc type found: ({type(value)}) {value}")
-            raise "Unknown or invalid association!"
+            raise InvalidAssociationException()
+
+
+class InvalidAssociationException(BaseException):
+    pass

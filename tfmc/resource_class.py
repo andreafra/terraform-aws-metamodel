@@ -1,28 +1,33 @@
 from dataclasses import dataclass, field
+import itertools
 from termcolor import colored
+
+from tfmc.schema_gen import Schema
 
 
 @dataclass
 class Attribute:
     id: str
-    value: any
-    type: any
+    value: int | str | bool
+    type: str
 
     def __repr__(self) -> str:
-        return f"{colored(self.id, 'yellow')}[{colored(self.type, 'light_green')}]={colored(self.value, 'cyan')}"
+        return f"{colored(self.id, 'yellow')}[{colored(self.type, 'light_green')}]={colored(str(self.value), 'cyan')}"
 
 
 @dataclass
 class Association:
     id: str
     targets: list[str]  # uuid of resource
-    type: str
+    target_refs: list["Resource"]
+    target_type: str
+    schema_type: str
 
     def __repr__(self) -> str:
         # if len(self.target_ids) > 0 and isinstance(self.target_ids[0], object):
         #     items = list(map(lambda x: colored(x.id, "cyan"), self.target_ids))
         #     return f"{colored(self.id, 'magenta')}[{colored(self.type, 'light_green')}]={items}"
-        return f"{colored(self.id, 'magenta')}[{colored(self.type, 'light_green')}]={colored(self.targets, 'cyan')}"
+        return f"{colored(self.id, 'magenta')}[{colored(self.target_type, 'light_green')}]={colored(str(self.targets), 'cyan')}"
 
 
 @dataclass
@@ -33,10 +38,13 @@ class Resource:
     assocs: list[Association]
     tfmeta: dict
 
-    # generate z3
-    def encode(self):
-        # TODO: Encode into a Z3 rule
-        pass
+    def gen_association_refs(self, refs: "Refs"):
+        for assoc in self.assocs:
+            for uuid in assoc.targets:
+                if tgt_ref := refs.im_uuids.get(uuid):
+                    assoc.target_refs.append(tgt_ref)
+                else:
+                    print(f"Association: target ref {uuid} not found!")
 
     def __repr__(self) -> str:
         return f"{colored(self.id, 'light_cyan')}:\n" + (
@@ -51,16 +59,29 @@ class Resource:
 
 @dataclass
 class Refs:
-    schema: dict[str, dict]
+    schema: Schema
     im_resources: dict[str, Resource]
     im_uuids: dict[str, Resource]
 
-    def encode(self):
-        categories = list(self.schema.keys())
-        associations = [res for rkey, res in self.schema.items()]
-        # associations = [res.assocs for res in self.im_resources.values()]
-        # attributes = [res.attrs for res in self.im_resources.values()]
+    def gen_association_refs(self):
+        for res in self.im_resources.values():
+            res.gen_association_refs(self)
 
-        print(categories)
-        print(associations)
-        # print(attributes)
+    def get_mm_categories(self):
+        return self.schema.categories
+
+    def get_mm_associations(self):
+        return list(self.schema.associations.keys())
+
+    def get_mm_attributes(self):
+        return list(self.schema.attributes.keys())
+
+    def get_im_elements(self):
+        return list(self.im_resources.keys())
+
+    def get_im_associations(self):
+        assocs = [res.assocs for res in self.im_resources.values()]
+        return list(itertools.chain(*assocs))
+
+    def get_im_attributes(self):
+        return [res.attrs for res in self.im_resources.values()]

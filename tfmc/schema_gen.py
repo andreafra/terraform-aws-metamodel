@@ -94,7 +94,8 @@ def add_typed_associations_to_attrs(resources, custom_fks=None):
     return resources
 
 
-def flatten_schema(schema) -> Schema:
+def flatten_schema(schema: dict) -> Schema:
+    """Flattens the metamodel into categories, associations and attributes, and returns a Schema instance containing the three."""
     categories = []
     associations = {}
     attributes = {}
@@ -104,7 +105,7 @@ def flatten_schema(schema) -> Schema:
         categories.append(rk)
         all_attrs = props.get("attributes", {})
         for k, v in all_attrs.items():
-            propkey = f"{rk}::{k}"
+            propkey = f"{rk}::{k}"  #
             if existing_v := associations.get(propkey):
                 if existing_v != v:
                     if parentk != "":
@@ -114,11 +115,13 @@ def flatten_schema(schema) -> Schema:
             else:
                 attributes[propkey] = v
         # add assoc for nested blocks
-        associations[f"{parentk}::{rk}"] = {
-            "type": "list",
-            "mm_type": rk,
-            "mm_nested_block": True,
-        }
+        # TODO: Why do some nested blocks have an empty parent?
+        if parentk != "":
+            associations[f"{parentk}::{rk}"] = {
+                "type": "list",
+                "mm_type": rk,
+                "mm_nested_block": True,
+            }
 
         # handle nested blocks
         nested_blocks = props.get("block_types", {})
@@ -129,12 +132,13 @@ def flatten_schema(schema) -> Schema:
     for rk, rv in schema.items():
         handle_block(rk, rv)
 
+    categories = list(set(categories))
     categories.sort()
 
     return Schema(categories, associations, attributes)
 
 
-def generate_schema():
+def generate_schema() -> Schema:
     """Generates an annotated schema starting from the `aws-schema.json` input file
     in the `assets` resource folder."""
     schema = files(schemas).joinpath("aws-schema.json").read_text()
