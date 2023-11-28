@@ -43,7 +43,7 @@ def add_transform_resource(id: str, category: str, props: dict, refs: Refs) -> R
 
         if attr_schema := refs.schema.attributes.get(schema_prop_id):
             # TODO: handle 'prop' when has a weird type!
-            res.attrs.append(Attribute(prop_id, prop, attr_schema.get("type")))  # type: ignore
+            res.attrs.append(Attribute(prop_id, prop, attr_schema.get("type"), schema_prop_id))  # type: ignore
         elif assoc_schema := refs.schema.associations.get(schema_prop_id):
             if not assoc_schema.get("mm_nested_block"):
                 res.assocs.append(

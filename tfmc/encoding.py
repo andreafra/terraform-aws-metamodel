@@ -1,7 +1,7 @@
 import itertools
 import z3
 
-from tfmc.resource_class import Refs
+from tfmc.resource_class import Attribute, Refs
 
 Z3RefsMap = dict[str, z3.DatatypeRef]
 
@@ -33,6 +33,22 @@ def encode_elements(elements: list[str]):
     return encode_to_enumsort("Elements", elements)
 
 
+def encode_strings(attributes: list[Attribute]):
+    strings: list[str] = list(
+        set([str(x.value) for x in attributes if x.type == "string" and x.value])
+    )
+    return encode_to_enumsort(name="Strings", items=strings)
+
+
+def define_value_sort(string_sort: z3.DatatypeSortRef):
+    s = z3.Datatype("Value")
+    s.declare("none")
+    s.declare("number", ("get_number", z3.IntSort()))
+    s.declare("bool", ("get_bool", z3.BoolSort()))
+    s.declare("string", ("get_string", string_sort))
+    return s.create()
+
+
 def define_category_function(
     elem_sort: z3.DatatypeSortRef,
     cat_sort: z3.DatatypeSortRef,
@@ -43,9 +59,15 @@ def define_category_function(
 def define_association_function(
     assoc_sort: z3.DatatypeSortRef, elem_sort: z3.DatatypeSortRef
 ):
-    return z3.Function(
-        "association", elem_sort, assoc_sort, elem_sort, z3.BoolSort(ctx=elem_sort.ctx)
-    )
+    return z3.Function("association", elem_sort, assoc_sort, elem_sort, z3.BoolSort())
+
+
+def define_attribute_function(
+    attr_sort: z3.DatatypeSortRef,
+    elem_sort: z3.DatatypeSortRef,
+    value_sort: z3.DatatypeSortRef,
+):
+    return z3.Function("attribute", elem_sort, attr_sort, value_sort, z3.BoolSort())
 
 
 def assert_categories(
@@ -68,7 +90,6 @@ def assert_associations(
     assoc_sort: z3.DatatypeSortRef,
     elem_refs: Z3RefsMap,
 ):
-    """ """
     im_assocs = refs.im_resources.items()
     a = z3.Const("a", assoc_sort)
     # for every possible A <-> B association...
@@ -82,11 +103,50 @@ def assert_associations(
                     for elem1_assoc in elem1.assocs
                     if elem2 == elem1_assoc
                 ),
-                solver.ctx,
             ),
         )
         solver.assert_and_track(expr, f"association {id1} {id2}")
 
 
-def assert_attributes():
-    pass
+def assert_attributes(
+    solver: z3.Solver,
+    refs: Refs,
+    attr_rel: z3.FuncDeclRef,
+    attr_refs: Z3RefsMap,
+    attr_sort: z3.DatatypeSortRef,
+    elem_refs: Z3RefsMap,
+    string_refs: Z3RefsMap,
+    value_sort: z3.DatatypeSortRef,
+):
+    # encode attribute data
+    def encode_value(val: str | int | bool) -> z3.DatatypeRef:
+        if type(val) is str:
+            return value_sort.string(string_refs[val])  # type: ignore
+        elif type(val) is int:
+            return value_sort.number(val)  # type: ignore
+        elif type(val) is bool:
+            return value_sort.bool(val)  # type: ignore
+        else:
+            return value_sort.none  # type: ignore
+
+    a = z3.Const("a", attr_sort)
+    v = z3.Const("v", value_sort)
+
+    for res_id, res in refs.im_resources.items():
+        if res.attrs:
+            expr = z3.ForAll(
+                [a, v],
+                attr_rel(elem_refs[res_id], a, v)
+                == z3.Or(
+                    *(
+                        z3.And(
+                            a == attr_refs[attr.schema_type],
+                            v == encode_value(attr.value),
+                        )
+                        for attr in res.attrs
+                    )
+                ),
+            )
+        else:
+            expr = z3.ForAll([a, v], z3.Not(attr_rel(elem_refs[res_id], a, v)))
+        solver.assert_and_track(expr, f"attribute_value {res_id}")

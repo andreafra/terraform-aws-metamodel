@@ -10,6 +10,7 @@ class Attribute:
     id: str
     value: int | str | bool
     type: str
+    schema_type: str
 
     def __repr__(self) -> str:
         return f"{colored(self.id, 'yellow')}[{colored(self.type, 'light_green')}]={colored(str(self.value), 'cyan')}"
@@ -84,4 +85,5 @@ class Refs:
         return list(itertools.chain(*assocs))
 
     def get_im_attributes(self):
-        return [res.attrs for res in self.im_resources.values()]
+        attrs = [res.attrs for res in self.im_resources.values()]
+        return list(itertools.chain(*attrs))
