@@ -5,12 +5,13 @@ from tfmc import solver
 from tfmc.cache import cache, clear_cache
 from tfmc.resource_transformer import transform_resources
 from tfmc.loader import load_tf_model
-from tfmc.schema_gen import generate_schema
+from tfmc.schema_gen import SchemaEncoder, decode_schema, generate_schema
+from tfmc.visualizer import visualize
 
 argparser = argparse.ArgumentParser("TFMC")
 argparser.add_argument(
-    "-nc",
-    "--nocache",
+    "-cc",
+    "--clearcache",
     help="Skips cached files.",
     action=argparse.BooleanOptionalAction,
 )
@@ -18,11 +19,15 @@ argparser.add_argument(
 args = argparser.parse_args()
 
 # Load the metamodel
-# if args.nocache:
-#     clear_cache()
-schema = generate_schema()
-# else:
-#     schema = cache("aws-schema-mm", lambda: generate_schema())
+if args.clearcache:
+    clear_cache()
+    schema = generate_schema()
+else:
+    schema = cache(
+        "aws-schema-mm",
+        lambda: SchemaEncoder().encode(generate_schema()),
+        decode_schema,
+    )
 
 # Load a file by folder name
 # Path is /assets/examples/<name>
@@ -43,4 +48,4 @@ refs.gen_association_refs()
 
 s = solver.init(refs)
 
-print(s)
+visualize(refs, out=".output/res.svg")
