@@ -11,22 +11,24 @@ if not os.path.exists(cache_dir):
     os.mkdir(cache_dir)
 
 
-def cache(filename: str, data_callback) -> any:
+def cache(filename: str, encode_callback=lambda x: x, decode_callback=lambda x: x):
     """Caches to disk an expensive function result like a JSON file.
     - `filename` the key to access the cached data
-    - `data_callback` should be a lambda function that wraps the expensive function."""
+    - `encode_callback` a function that wraps the expensive function and encodes it
+    - `decode_callback` a function that decodes the cached value"""
 
     file = cache_dir / filename
     if not os.path.exists(file):
         print(f"Cache for '{filename}' does not exist. Saving to cache...")
         with open(file, "w") as fp:
-            data = data_callback()
-            fp.write(json.dumps(data))
+            data = encode_callback()
+            fp.write(data)
             return data
     else:
         print(f"Cache for '{filename} found. Loading cache...'")
         with open(file) as fp:
-            return json.loads(fp.read())
+            data = json.loads(fp.read())
+            return decode_callback(data)
 
 
 def clear_cache():

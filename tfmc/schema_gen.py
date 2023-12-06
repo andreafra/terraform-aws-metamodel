@@ -1,11 +1,14 @@
+from collections.abc import Callable
 from dataclasses import dataclass
 from difflib import get_close_matches
 from importlib.resources import files
 import json
 import re
+from typing import Any
 import assets.schemas as schemas
 import yaml
 from yaml import Loader as YamlLoader
+from json import JSONDecoder, JSONEncoder
 
 """
 This module should take an AWS schema JSON file
@@ -26,6 +29,17 @@ class Schema:
     categories: list[str]
     associations: dict[str, dict]
     attributes: dict[str, dict]
+
+
+class SchemaEncoder(JSONEncoder):
+    def default(self, o: Any) -> Any:
+        return o.__dict__
+
+
+def decode_schema(raw_schema: dict):
+    return Schema(
+        raw_schema["categories"], raw_schema["associations"], raw_schema["attributes"]
+    )
 
 
 def load_json_schema(data):
@@ -119,6 +133,7 @@ def flatten_schema(schema: dict) -> Schema:
         if parentk != "":
             associations[f"{parentk}::{rk}"] = {
                 "type": "list",
+                "from": parentk or None,
                 "mm_type": rk,
                 "mm_nested_block": True,
             }
