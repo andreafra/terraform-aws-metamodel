@@ -1,16 +1,15 @@
 from dataclasses import make_dataclass
-from os import PathLike
+import os
 from pprint import pprint
-from typing import ForwardRef, get_type_hints
-import erdantic as erd
+from python_mermaid.diagram import MermaidDiagram, Node, Link
 
 from tfmc.resource_class import Refs
 
 
-def get_model_resources(refs: Refs):
-    res = []
+def get_mm_nodes(refs: Refs):
     # get actual resources used in the input model
     used_cats = [r.category for r in refs.im_resources.values()]
+    used_cats = list(set(used_cats))
     # get resources that have a relationship with the used resources
     # TOO MANY
     # neighbour_cats = {
@@ -19,22 +18,51 @@ def get_model_resources(refs: Refs):
     #     for nck, ncv in refs.schema.associations.items()
     #     if ncv.get("mm_type") == uc
     # }
+    print("used_cats:")
     pprint(used_cats)
-    cats = used_cats
-    for cat in cats:
-        fields = [
-            (ak, ForwardRef(av["mm_type"]))
-            for ak, av in refs.schema.associations.items()
-            if av.get("from") == cat
-        ]
-        get_type_hints(fields)
-        dc = make_dataclass(cat, fields)
-        res.append(dc)
-    return res
+    return [Node(c) for c in used_cats]
 
 
-def visualize(refs: Refs, out):
-    mrs = get_model_resources(refs)
+def get_mm_links(refs: Refs, nodes: list[Node]) -> list[Link]:
+    links = []
+    # for each category fetch their associations
+    for node in nodes:
+        for k, v in refs.schema.associations.items():
+            if v.get("from") == node.id:
+                links.append(
+                    Link(node, Node(v.get("mm_type")), message=k.removeprefix(node.id))
+                )
 
-    diagram = erd.create(*mrs)
-    diagram.draw(out)
+    return links
+
+
+def get_im_nodes(refs: Refs) -> list[Node]:
+    return [Node(e) for e in refs.get_im_elements()]
+
+
+def get_im_links(refs: Refs, nodes: list[Node]) -> list[Link]:
+    links = []
+    for node in nodes:
+        for assn in refs.get_im_associations():
+            if assn.id.startswith(node.id):
+                links += [
+                    Link(node, Node(target.id), message=assn.schema_type)
+                    for target in assn.target_refs
+                ]
+
+    return links
+
+
+def visualize(refs: Refs, outdir):
+    mm_nodes = get_mm_nodes(refs)
+    mm_links = get_mm_links(refs, mm_nodes)
+
+    im_nodes = get_im_nodes(refs)
+    im_links = get_im_links(refs, im_nodes)
+
+    mm_diag = MermaidDiagram("Metamodel", mm_nodes, mm_links)
+    with open(os.path.join(outdir, "mmdiag.txt"), "w") as f:
+        f.write(str(mm_diag))
+    im_diag = MermaidDiagram("Model", im_nodes, im_links)
+    with open(os.path.join(outdir, "imdiag.txt"), "w") as f:
+        f.write(str(im_diag))
