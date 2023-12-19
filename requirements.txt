@@ -2,4 +2,4 @@ termcolor
 pyyaml
 tfparse
 z3-solver
-erdantic
+python-mermaid

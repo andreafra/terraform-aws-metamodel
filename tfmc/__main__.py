@@ -48,4 +48,5 @@ refs.gen_association_refs()
 
 s = solver.init(refs)
 
-visualize(refs, out=".output/res.svg")
+# save mermaid representation of MM and IM diagram in '.output' folder
+visualize(refs, outdir=".output")
