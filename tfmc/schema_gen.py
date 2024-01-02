@@ -36,9 +36,11 @@ class SchemaEncoder(JSONEncoder):
         return o.__dict__
 
 
-def decode_schema(raw_schema: dict):
+def decode_schema(raw_schema) -> Schema:
     return Schema(
-        raw_schema["categories"], raw_schema["associations"], raw_schema["attributes"]
+        raw_schema["categories"],
+        raw_schema["associations"],
+        raw_schema["attributes"],
     )
 
 
