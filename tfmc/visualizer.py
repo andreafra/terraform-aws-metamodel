@@ -1,6 +1,7 @@
 from dataclasses import make_dataclass
 import os
 from pprint import pprint
+from re import match
 from python_mermaid.diagram import MermaidDiagram, Node, Link
 
 from tfmc.resource_class import Refs
@@ -18,19 +19,29 @@ def get_mm_nodes(refs: Refs):
     #     for nck, ncv in refs.schema.associations.items()
     #     if ncv.get("mm_type") == uc
     # }
-    print("used_cats:")
-    pprint(used_cats)
     return [Node(c) for c in used_cats]
 
 
-def get_mm_links(refs: Refs, nodes: list[Node]) -> list[Link]:
+def get_mm_links(
+    refs: Refs, nodes: list[Node], summarize_mm: bool = False
+) -> list[Link]:
     links = []
+    im_assocs = refs.get_im_associations()
     # for each category fetch their associations
     for node in nodes:
         for k, v in refs.schema.associations.items():
-            if v.get("from") == node.id:
+            # alternative: match(f"^{node.id}::.*", k):
+            if v.get("mm_from") == node.id and (
+                # look in the IM to see which relationships are relevant
+                not summarize_mm
+                or k in [kid.schema_type for kid in im_assocs]
+            ):
                 links.append(
-                    Link(node, Node(v.get("mm_type")), message=k.removeprefix(node.id))
+                    Link(
+                        node,
+                        Node(v.get("mm_type")),
+                        message=k.removeprefix(node.id),
+                    )
                 )
 
     return links
@@ -53,10 +64,10 @@ def get_im_links(refs: Refs, nodes: list[Node]) -> list[Link]:
     return links
 
 
-def visualize(refs: Refs, outdir=None):
+def visualize(refs: Refs, outdir=None, summarize_mm=False):
     """If `outdir` is present, the text representation of diagram will be saved in that folder."""
     mm_nodes = get_mm_nodes(refs)
-    mm_links = get_mm_links(refs, mm_nodes)
+    mm_links = get_mm_links(refs, mm_nodes, summarize_mm)
 
     im_nodes = get_im_nodes(refs)
     im_links = get_im_links(refs, im_nodes)

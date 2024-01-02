@@ -83,12 +83,12 @@ def add_mm_type_to_attributes(attrs, fk_attrs, res_k, custom_fks):
     for k in attrs_keys:
         if fk_attrs_for_k := get_close_matches(k, [fk for fk in fk_attrs if fk in k]):
             # assign the best match as 'mm_type'
-            attrs[k]["mm_type"] = f"aws_{fk_attrs_for_k[0]}"
+            attrs[k] = {"mm_type": f"aws_{fk_attrs_for_k[0]}", "mm_from": res_k}
 
     if res_k in whitelist:
         for k, v in whitelist[res_k].items():
             if k in attrs:
-                attrs[k]["mm_type"] = v
+                attrs[k] = {"mm_type": v, "mm_from": res_k}
 
 
 def add_typed_associations_to_attrs(resources, custom_fks=None):
@@ -135,7 +135,7 @@ def flatten_schema(schema: dict) -> Schema:
         if parentk != "":
             associations[f"{parentk}::{rk}"] = {
                 "type": "list",
-                "from": parentk or None,
+                "mm_from": parentk or None,
                 "mm_type": rk,
                 "mm_nested_block": True,
             }
