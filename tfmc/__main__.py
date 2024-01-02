@@ -22,9 +22,15 @@ argparser.add_argument(
     action=argparse.BooleanOptionalAction,
 )
 argparser.add_argument(
-    "-sw",
+    "-sws",
     "--skipwebserver",
     help="Doesn't use web server",
+    action=argparse.BooleanOptionalAction,
+)
+argparser.add_argument(
+    "-smm",
+    "--summarize_mm",
+    help="Produce a smaller graphical representation of the metamodel",
     action=argparse.BooleanOptionalAction,
 )
 
@@ -67,7 +73,7 @@ def validate_model(name: str):
     # outdir.mkdir(parents=True, exist_ok=True)
 
     # also save mermaid representation of MM and IM diagram in '.output' folder
-    mm_diag, im_diag = visualize(refs)
+    mm_diag, im_diag = visualize(refs, summarize_mm=args.summarize_mm)
 
     return mm_diag, im_diag
 
