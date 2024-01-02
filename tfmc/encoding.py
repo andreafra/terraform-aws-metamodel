@@ -7,67 +7,71 @@ Z3RefsMap = dict[str, z3.DatatypeRef]
 
 
 def encode_to_enumsort(
-    name: str, items: list[str]
+    name: str, items: list[str], ctx: z3.Context
 ) -> tuple[z3.DatatypeSortRef, Z3RefsMap]:
-    sort, datatype = z3.EnumSort(name, items)
+    sort, datatype = z3.EnumSort(name, items, ctx=ctx)
     return sort, dict(zip(items, datatype))
 
 
 # Metamodel Level
-def encode_categories(categories: list[str]):
+def encode_categories(categories: list[str], ctx: z3.Context):
     """Encodes a list of category names and returns a tuple containing the
     `Sort` and a `Map<category name, category datatype ref>`"""
-    return encode_to_enumsort(name="Categories", items=categories)
+    return encode_to_enumsort(name="Categories", items=categories, ctx=ctx)
 
 
-def encode_association_ids(assoc_refs: list[str]):
-    return encode_to_enumsort(name="Associations", items=assoc_refs)
+def encode_association_ids(assoc_refs: list[str], ctx: z3.Context):
+    return encode_to_enumsort(name="Associations", items=assoc_refs, ctx=ctx)
 
 
-def encode_attribute_ids(attributes: list[str]):
-    return encode_to_enumsort(name="Attributes", items=attributes)
+def encode_attribute_ids(attributes: list[str], ctx: z3.Context):
+    return encode_to_enumsort(name="Attributes", items=attributes, ctx=ctx)
 
 
 # Intermediate Model Level
-def encode_elements(elements: list[str]):
-    return encode_to_enumsort("Elements", elements)
+def encode_elements(elements: list[str], ctx: z3.Context):
+    return encode_to_enumsort("Elements", elements, ctx=ctx)
 
 
-def encode_strings(attributes: list[Attribute]):
+def encode_strings(attributes: list[Attribute], ctx: z3.Context):
     strings: list[str] = list(
         set([str(x.value) for x in attributes if x.type == "string" and x.value])
     )
-    return encode_to_enumsort(name="Strings", items=strings)
+    return encode_to_enumsort(name="Strings", items=strings, ctx=ctx)
 
 
-def define_value_sort(string_sort: z3.DatatypeSortRef):
-    s = z3.Datatype("Value")
+def define_value_sort(string_sort: z3.DatatypeSortRef, ctx: z3.Context):
+    s = z3.Datatype("Value", ctx=ctx)
     s.declare("none")
-    s.declare("number", ("get_number", z3.IntSort()))
-    s.declare("bool", ("get_bool", z3.BoolSort()))
+    s.declare("number", ("get_number", z3.IntSort(ctx=ctx)))
+    s.declare("bool", ("get_bool", z3.BoolSort(ctx=ctx)))
     s.declare("string", ("get_string", string_sort))
     return s.create()
 
 
 def define_category_function(
-    elem_sort: z3.DatatypeSortRef,
-    cat_sort: z3.DatatypeSortRef,
+    elem_sort: z3.DatatypeSortRef, cat_sort: z3.DatatypeSortRef
 ):
     return z3.Function("elem_category", elem_sort, cat_sort)
 
 
 def define_association_function(
-    assoc_sort: z3.DatatypeSortRef, elem_sort: z3.DatatypeSortRef
+    assoc_sort: z3.DatatypeSortRef, elem_sort: z3.DatatypeSortRef, ctx: z3.Context
 ):
-    return z3.Function("association", elem_sort, assoc_sort, elem_sort, z3.BoolSort())
+    return z3.Function(
+        "association", elem_sort, assoc_sort, elem_sort, z3.BoolSort(ctx=ctx)
+    )
 
 
 def define_attribute_function(
     attr_sort: z3.DatatypeSortRef,
     elem_sort: z3.DatatypeSortRef,
     value_sort: z3.DatatypeSortRef,
+    ctx: z3.Context,
 ):
-    return z3.Function("attribute", elem_sort, attr_sort, value_sort, z3.BoolSort())
+    return z3.Function(
+        "attribute", elem_sort, attr_sort, value_sort, z3.BoolSort(ctx=ctx)
+    )
 
 
 def assert_categories(
@@ -101,8 +105,9 @@ def assert_associations(
                 *(
                     a == assoc_refs[elem1_assoc.schema_type]
                     for elem1_assoc in elem1.assocs
-                    if elem2 == elem1_assoc
+                    if elem2 in elem1_assoc.target_refs
                 ),
+                solver.ctx,
             ),
         )
         solver.assert_and_track(expr, f"association {id1} {id2}")
@@ -144,7 +149,8 @@ def assert_attributes(
                             v == encode_value(attr.value),
                         )
                         for attr in res.attrs
-                    )
+                    ),
+                    solver.ctx,
                 ),
             )
         else:

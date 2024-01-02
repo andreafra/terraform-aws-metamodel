@@ -93,6 +93,8 @@ def handle_nested_block(
 
 def get_assoc_refs(value) -> list[str]:
     if isinstance(value, list):
+        if not value:
+            return []
         return reduce(list.__add__, map(get_assoc_refs, value))
     else:
         if isinstance(value, dict):
