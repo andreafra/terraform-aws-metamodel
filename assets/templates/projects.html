@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}TFMC :: Projects{% endblock %}
+{% block content %}
+<h2>Projects</h2>
+<p>Select a project to validate it and see its representation.</p>
+<ul id="navigation">
+    {% for p in projects %}
+    <li><a href="/{{ p }}">{{ p }}</a></li>
+    {% endfor %}
+</ul>
+{% endblock %}
