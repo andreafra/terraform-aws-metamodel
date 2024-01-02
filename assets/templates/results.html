@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}TFMC :: {{ name }} Results{% endblock %}
+{% block content %}
+<h2>{{ name }} Results</h2>
+
+<style>
+    .mermaid {
+        min-width: 90vw;
+        width: 1800px;
+    }
+</style>
+
+<pre class="mermaid">
+    {{mm_diagram}}
+</pre>
+<pre class="mermaid">
+    {{im_diagram}}
+</pre>
+
+
+<!-- Import Mermaid -->
+<script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true });
+    window.mermaid = mermaid;
+</script>
+{% endblock %}

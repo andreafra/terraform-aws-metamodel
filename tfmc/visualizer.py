@@ -53,7 +53,8 @@ def get_im_links(refs: Refs, nodes: list[Node]) -> list[Link]:
     return links
 
 
-def visualize(refs: Refs, outdir):
+def visualize(refs: Refs, outdir=None):
+    """If `outdir` is present, the text representation of diagram will be saved in that folder."""
     mm_nodes = get_mm_nodes(refs)
     mm_links = get_mm_links(refs, mm_nodes)
 
@@ -61,8 +62,12 @@ def visualize(refs: Refs, outdir):
     im_links = get_im_links(refs, im_nodes)
 
     mm_diag = MermaidDiagram("Metamodel", mm_nodes, mm_links)
-    with open(os.path.join(outdir, "mmdiag.txt"), "w") as f:
-        f.write(str(mm_diag))
     im_diag = MermaidDiagram("Model", im_nodes, im_links)
-    with open(os.path.join(outdir, "imdiag.txt"), "w") as f:
-        f.write(str(im_diag))
+
+    if outdir:
+        with open(os.path.join(outdir, "mmdiag.txt"), "w") as f:
+            f.write(str(mm_diag))
+        with open(os.path.join(outdir, "imdiag.txt"), "w") as f:
+            f.write(str(im_diag))
+
+    return mm_diag, im_diag

@@ -9,6 +9,7 @@
             "type": "python",
             "request": "launch",
             "module": "tfmc",
+            "args": ["-cc", "-sw"],
             "justMyCode": true
         }
     ]
