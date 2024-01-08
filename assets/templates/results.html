@@ -2,7 +2,14 @@
 {% block title %}TFMC :: {{ name }} Results{% endblock %}
 {% block content %}
 <h2>{{ name }}</h2>
-<p>Validation result = {{ sat }}</p>
+<p>Validation result = <b> {{ is_sat }} </b></p>
+
+<ul>
+    {% for r in results %}
+    <li>{% if r.result %} SAT {% else %} UNSAT {% endif %} {% if r.negate_form %} [Negate Form] {% endif %} | {{
+        r.error_msg }}</li>
+    {% endfor %}
+</ul>
 
 <style>
     .mermaid {

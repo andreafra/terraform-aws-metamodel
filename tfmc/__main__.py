@@ -67,7 +67,13 @@ def validate_model(name: str):
 
     refs.gen_association_refs()
 
-    s, sat = solver.init(refs)
+    sctx = solver.init(refs)
+
+    results = solver.check_requirements(sctx)
+
+    print(results)
+
+    is_sat = all([x.error_msg == "" for x in results])
 
     # outdir = Path(f".output/{name}")
     # outdir.mkdir(parents=True, exist_ok=True)
@@ -75,7 +81,7 @@ def validate_model(name: str):
     # also save mermaid representation of MM and IM diagram in '.output' folder
     mm_diag, im_diag = visualize(refs, summarize_mm=args.summarize_mm)
 
-    return mm_diag, im_diag, sat
+    return mm_diag, im_diag, is_sat, results
 
 
 if not args.skipwebserver:
@@ -95,14 +101,15 @@ if not args.skipwebserver:
     def load_proj(tfproj):
         project_name = escape(tfproj)
 
-        mm_diag, im_diag, sat = validate_model(project_name)
+        mm_diag, im_diag, is_sat, results = validate_model(project_name)
 
         return render_template(
             "results.html",
             name=project_name,
             mm_diagram=mm_diag,
             im_diagram=im_diag,
-            sat=sat,
+            is_sat=is_sat,
+            results=results,
         )
 
     app.run()

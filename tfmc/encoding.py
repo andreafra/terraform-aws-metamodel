@@ -2,8 +2,7 @@ import itertools
 import z3
 
 from tfmc.resource_class import Attribute, Refs
-
-Z3RefsMap = dict[str, z3.DatatypeRef]
+from tfmc.solver_class import SolverContext, Z3RefsMap
 
 
 def encode_to_enumsort(
@@ -74,85 +73,78 @@ def define_attribute_function(
     )
 
 
-def assert_categories(
-    solver: z3.Solver,
-    refs: Refs,
-    elem_cat_fn: z3.FuncDeclRef,
-    element_refs: Z3RefsMap,
-    category_refs: Z3RefsMap,
-):
+def assert_categories(sctx: SolverContext, refs: Refs):
     for id, elem in refs.im_resources.items():
-        a = elem_cat_fn(element_refs[id]) == category_refs[elem.category]
-        solver.assert_and_track(a, f"elem_cat {id} {elem.category}")
+        a = sctx.fn.category(sctx.ref.element[id]) == sctx.ref.category[elem.category]
+        sctx.solver.assert_and_track(a, f"elem_cat {id} {elem.category}")
 
 
 def assert_associations(
-    solver: z3.Solver,
+    sctx: SolverContext,
     refs: Refs,
-    assoc_rel: z3.FuncDeclRef,
-    assoc_refs: Z3RefsMap,
-    assoc_sort: z3.DatatypeSortRef,
-    elem_refs: Z3RefsMap,
 ):
     im_assocs = refs.im_resources.items()
-    a = z3.Const("a", assoc_sort)
+    a = z3.Const("a", sctx.sort.association)
     # for every possible A <-> B association...
     for (id1, elem1), (id2, elem2) in itertools.product(im_assocs, im_assocs):
         expr = z3.ForAll(
             [a],
-            assoc_rel(elem_refs[id1], a, elem_refs[id2])
+            sctx.fn.association(sctx.ref.element[id1], a, sctx.ref.element[id2])
             == z3.Or(
                 *(
-                    a == assoc_refs[elem1_assoc.schema_type]
+                    a == sctx.ref.association[elem1_assoc.schema_type]
                     for elem1_assoc in elem1.assocs
                     if elem2 in elem1_assoc.target_refs
                 ),
-                solver.ctx,
+                sctx.solver.ctx,
             ),
         )
-        solver.assert_and_track(expr, f"association {id1} {id2}")
+        sctx.solver.assert_and_track(expr, f"association {id1} {id2}")
 
 
 def assert_attributes(
-    solver: z3.Solver,
+    sctx: SolverContext,
     refs: Refs,
-    attr_rel: z3.FuncDeclRef,
-    attr_refs: Z3RefsMap,
-    attr_sort: z3.DatatypeSortRef,
-    elem_refs: Z3RefsMap,
-    string_refs: Z3RefsMap,
-    value_sort: z3.DatatypeSortRef,
 ):
     # encode attribute data
     def encode_value(val: str | int | bool) -> z3.DatatypeRef:
         if type(val) is str:
-            return value_sort.string(string_refs[val])  # type: ignore
+            return sctx.sort.value.string(sctx.ref.string[val])  # type: ignore
         elif type(val) is int:
-            return value_sort.number(val)  # type: ignore
+            return sctx.sort.value.number(val)  # type: ignore
         elif type(val) is bool:
-            return value_sort.bool(val)  # type: ignore
+            return sctx.sort.value.bool(val)  # type: ignore
         else:
-            return value_sort.none  # type: ignore
+            return sctx.sort.value.none  # type: ignore
 
-    a = z3.Const("a", attr_sort)
-    v = z3.Const("v", value_sort)
+    a = z3.Const("a", sctx.sort.attribute)
+    v = z3.Const("v", sctx.sort.value)
 
     for res_id, res in refs.im_resources.items():
         if res.attrs:
             expr = z3.ForAll(
                 [a, v],
-                attr_rel(elem_refs[res_id], a, v)
+                sctx.fn.attribute(sctx.ref.element[res_id], a, v)
                 == z3.Or(
                     *(
                         z3.And(
-                            a == attr_refs[attr.schema_type],
+                            a == sctx.ref.attribute[attr.schema_type],
                             v == encode_value(attr.value),
                         )
                         for attr in res.attrs
                     ),
-                    solver.ctx,
+                    sctx.solver.ctx,
                 ),
             )
         else:
-            expr = z3.ForAll([a, v], z3.Not(attr_rel(elem_refs[res_id], a, v)))
-        solver.assert_and_track(expr, f"attribute_value {res_id}")
+            expr = z3.ForAll(
+                [a, v], z3.Not(sctx.fn.attribute(sctx.ref.element[res_id], a, v))
+            )
+        sctx.solver.assert_and_track(expr, f"attribute_value {res_id}")
+
+
+def get_user_friendly_name(sctx: SolverContext, const: z3.ExprRef):
+    model = sctx.solver.model()
+    z3_elem = model[const]
+    if z3_elem is not None:
+        return str(z3_elem)
