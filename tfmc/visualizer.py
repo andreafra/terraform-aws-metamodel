@@ -2,7 +2,7 @@ from dataclasses import make_dataclass
 import os
 from pprint import pprint
 from re import match
-from python_mermaid.diagram import MermaidDiagram, Node, Link
+from plantweb.render import render
 
 from tfmc.resource_class import Refs
 
@@ -19,66 +19,112 @@ def get_mm_nodes(refs: Refs):
     #     for nck, ncv in refs.schema.associations.items()
     #     if ncv.get("mm_type") == uc
     # }
-    return [Node(c) for c in used_cats]
+    return used_cats
 
 
 def get_mm_links(
-    refs: Refs, nodes: list[Node], summarize_mm: bool = False
-) -> list[Link]:
+    refs: Refs, nodes: list[str], summarize_mm: bool = False
+) -> list[tuple[str, str, str]]:
     links = []
     im_assocs = refs.get_im_associations()
     # for each category fetch their associations
     for node in nodes:
         for k, v in refs.schema.associations.items():
             # alternative: match(f"^{node.id}::.*", k):
-            if v.get("mm_from") == node.id and (
+            if v.get("mm_from") == node and (
                 # look in the IM to see which relationships are relevant
                 not summarize_mm
                 or k in [kid.schema_type for kid in im_assocs]
             ):
                 links.append(
-                    Link(
+                    (
                         node,
-                        Node(v.get("mm_type")),
-                        message=k.removeprefix(node.id),
+                        v.get("mm_type"),
+                        k.removeprefix(node),
                     )
                 )
 
     return links
 
 
-def get_im_nodes(refs: Refs) -> list[Node]:
-    return [Node(e) for e in refs.get_im_elements()]
+def get_im_nodes(refs: Refs) -> list[str]:
+    return refs.get_im_elements()
 
 
-def get_im_links(refs: Refs, nodes: list[Node]) -> list[Link]:
+def get_im_links(refs: Refs, nodes: list[str]) -> list[str]:
     links = []
     for node in nodes:
         for assn in refs.get_im_associations():
-            if assn.id.startswith(node.id):
+            if assn.id.startswith(node):
                 links += [
-                    Link(node, Node(target.id), message=assn.schema_type)
-                    for target in assn.target_refs
+                    (node, target.id, assn.schema_type) for target in assn.target_refs
                 ]
 
     return links
 
 
-def visualize(refs: Refs, outdir=None, summarize_mm=False):
+def make_plantuml_diag(nodes, links):
+    all_nodes = set()
+    ids = {}
+    id_counter = 0
+    content = "@startuml\n"
+    for node in nodes:
+        all_nodes.add(node)
+    for link_from, link_to, _ in links:
+        all_nodes.add(link_from)
+        all_nodes.add(link_to)
+    for node in all_nodes:
+        ids[node] = id_counter
+        id_counter += 1
+        content += f'object "{node}" as {ids[node]}\n'
+    content += "\n"
+    for link_from, link_to, link_label in links:
+        content += f'{ids[link_from]} --> {ids[link_to]} : {link_label}"\n'
+    content += "@enduml"
+    return content
+
+
+def visualize(refs: Refs, outdir=None):
     """If `outdir` is present, the text representation of diagram will be saved in that folder."""
     mm_nodes = get_mm_nodes(refs)
-    mm_links = get_mm_links(refs, mm_nodes, summarize_mm)
+    mm_links = get_mm_links(refs, mm_nodes, summarize_mm=False)
+    mm_links_min = get_mm_links(refs, mm_nodes, summarize_mm=True)
 
     im_nodes = get_im_nodes(refs)
     im_links = get_im_links(refs, im_nodes)
 
-    mm_diag = MermaidDiagram("Metamodel", mm_nodes, mm_links)
-    im_diag = MermaidDiagram("Model", im_nodes, im_links)
+    mm_diag_src = make_plantuml_diag(mm_nodes, mm_links)
+    mm_diag_min_src = make_plantuml_diag(mm_nodes, mm_links_min)
+    im_diag_src = make_plantuml_diag(im_nodes, im_links)
+
+    mm_diag_svg, _, _, _ = render(
+        mm_diag_src,
+        engine="plantuml",
+        format="svg",
+        cacheopts={"use_cache": False},
+    )
+    mm_diag_min_svg, _, _, _ = render(
+        mm_diag_min_src,
+        engine="plantuml",
+        format="svg",
+        cacheopts={"use_cache": False},
+    )
+    im_diag_svg, _, _, _ = render(
+        im_diag_src,
+        engine="plantuml",
+        format="svg",
+        cacheopts={"use_cache": False},
+    )
 
     if outdir:
-        with open(os.path.join(outdir, "mmdiag.txt"), "w") as f:
-            f.write(str(mm_diag))
-        with open(os.path.join(outdir, "imdiag.txt"), "w") as f:
-            f.write(str(im_diag))
-
-    return mm_diag, im_diag
+        with open(os.path.join(outdir, "mm.txt"), "w") as f:
+            f.write(str(mm_diag_src))
+        with open(os.path.join(outdir, "mm.svg"), "wb") as f:
+            f.write(mm_diag_svg)
+        with open(os.path.join(outdir, "mm_min.svg"), "wb") as f:
+            f.write(mm_diag_min_svg)
+        with open(os.path.join(outdir, "im.txt"), "w") as f:
+            f.write(str(im_diag_src))
+        with open(os.path.join(outdir, "im.svg"), "wb") as f:
+            f.write(im_diag_svg)
+    return mm_diag_svg, im_diag_svg

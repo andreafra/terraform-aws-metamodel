@@ -2,9 +2,10 @@ import argparse
 from importlib.resources import files
 import json
 from pathlib import Path
-from flask import Flask, render_template
+from flask import Flask, render_template, send_from_directory
 from markupsafe import escape
 from pprint import pprint
+import assets as assets_dir
 import assets.examples
 import assets.templates
 from tfmc import solver
@@ -27,12 +28,6 @@ argparser.add_argument(
     help="Doesn't use web server",
     action=argparse.BooleanOptionalAction,
 )
-argparser.add_argument(
-    "-smm",
-    "--summarize_mm",
-    help="Produce a smaller graphical representation of the metamodel",
-    action=argparse.BooleanOptionalAction,
-)
 
 args = argparser.parse_args()
 
@@ -45,6 +40,8 @@ schema = cache(
     lambda: SchemaEncoder().encode(generate_schema()),
     lambda x: decode_schema(json.loads(x)),
 )
+
+OUTPUT_DIR = Path("assets/cache/output")
 
 
 def validate_model(name: str):
@@ -75,18 +72,23 @@ def validate_model(name: str):
 
     is_sat = all([x.error_msg == "" for x in results])
 
-    # outdir = Path(f".output/{name}")
-    # outdir.mkdir(parents=True, exist_ok=True)
+    outdir = OUTPUT_DIR / name
+    outdir.mkdir(parents=True, exist_ok=True)
 
     # also save mermaid representation of MM and IM diagram in '.output' folder
-    mm_diag, im_diag = visualize(refs, summarize_mm=args.summarize_mm)
+    mm_diag, im_diag = visualize(refs, outdir=outdir)
 
     return mm_diag, im_diag, is_sat, results
 
 
 if not args.skipwebserver:
     # start html server to display output
-    app = Flask(__name__, template_folder=files(assets.templates))  # type: ignore
+    app = Flask(
+        __name__,
+        template_folder=files(assets.templates),
+        static_url_path="/static",
+        static_folder=files(assets_dir) / "cache/output",
+    )  # type: ignore
 
     @app.route("/")
     def projects():
