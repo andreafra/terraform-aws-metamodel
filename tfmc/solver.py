@@ -86,25 +86,6 @@ def init(refs: Refs, enable_attributes=True):
     if enable_attributes:
         assert_attributes(sctx, refs)
 
-    # s.assert_and_track(
-    #     assoc_fn(
-    #         ele_refs["aws_instance::this"],
-    #         ass_refs["aws_instance::vpc_security_group_ids"],
-    #         ele_refs["aws_security_group::this"],
-    #     ),
-    #     "p1",
-    # )
-
-    # s.assert_and_track(
-    #     assoc_fn(
-    #         ele_refs["aws_instance::this"],
-    #         ass_refs["aws_instance::key_name"],
-    #         ele_refs["aws_key_pair::this"],
-    #     ),
-    #     "p1",
-    # )
-    # print(s.sexpr())
-
     return sctx
 
 

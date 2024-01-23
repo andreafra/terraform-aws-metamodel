@@ -32,15 +32,17 @@ def restructure(raw_model):
         if category not in special_categories:
             for resource in resources:
                 id = resource["__tfmeta"]["path"]
-                type = resource["__tfmeta"]["type"]
+                type = resource["__tfmeta"].get("type")
                 if type == "resource":
                     model["resources"][id] = resource
                 elif type == "data":
                     model["data"][id] = resource
+                else:
+                    print(f"No type found for category '{category}'. Skipping...")
 
     # TODO: Might need parsing and/or adding their UUID to the map
     for sp in special_categories:
-        model[sp] = raw_model[sp]
+        model[sp] = raw_model.get(sp)
 
     return model
 

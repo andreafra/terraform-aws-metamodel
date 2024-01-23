@@ -28,6 +28,12 @@ argparser.add_argument(
     help="Doesn't use web server",
     action=argparse.BooleanOptionalAction,
 )
+argparser.add_argument(
+    "-da",
+    "--disable_attributes",
+    help="Disables attributes in the logic representation. Only associations will be considered.",
+    action=argparse.BooleanOptionalAction,
+)
 
 args = argparser.parse_args()
 
@@ -44,7 +50,7 @@ schema = cache(
 OUTPUT_DIR = Path("assets/cache/output")
 
 
-def validate_model(name: str):
+def validate_model(name: str, enable_attributes: bool):
     # Load a file by folder name
     # Path is /assets/examples/<name>
     model = load_tf_model(name)
@@ -64,7 +70,7 @@ def validate_model(name: str):
 
     refs.gen_association_refs()
 
-    sctx = solver.init(refs)
+    sctx = solver.init(refs, enable_attributes=enable_attributes)
 
     results = solver.check_requirements(sctx)
 
@@ -103,8 +109,11 @@ if not args.skipwebserver:
     def load_proj(tfproj):
         project_name = escape(tfproj)
 
-        mm_diag, im_diag, is_sat, results = validate_model(project_name)
+        mm_diag, im_diag, is_sat, results = validate_model(
+            project_name, not args.disable_attributes
+        )
 
+        print("Waiting for render")
         return render_template(
             "results.html",
             name=project_name,
@@ -117,4 +126,4 @@ if not args.skipwebserver:
     app.run()
 
 else:
-    validate_model("aws_ec2_ebs_docker_host")
+    validate_model("aws_ec2_ebs_docker_host", args.disable_attributes)

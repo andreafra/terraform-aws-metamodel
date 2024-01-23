@@ -12,19 +12,24 @@ def transform_resources(resources: dict, schema: Schema):
 
     # Transform Resources
     for category_and_id, props in resources.items():
-        # only way to retrieve the user-assigned resource name
-        [category, id] = category_and_id.split(".")
+        try:
+            # only way to retrieve the user-assigned resource name
+            [category, id] = category_and_id.split(".")
 
-        # just a double check to not get weird parsed stuff
-        assert category == props.get("__tfmeta").get("label")
+            # just a double check to not get weird parsed stuff
+            assert category == props.get("__tfmeta").get("label")
 
-        # check if metamodel specify this category
-        add_transform_resource(
-            f"{category}::{id}",
-            category,
-            props,
-            refs,
-        )
+            # check if metamodel specify this category
+            add_transform_resource(
+                f"{category}::{id}",
+                category,
+                props,
+                refs,
+            )
+        except ValueError:
+            print(
+                f"Failed to obtain category and id for resource '{category_and_id}'. Skipping..."
+            )
 
     return refs
 

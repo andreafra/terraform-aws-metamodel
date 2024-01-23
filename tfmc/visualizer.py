@@ -77,6 +77,8 @@ def make_plantuml_diag(nodes, links):
         content += "[node]\n"
     content += "\n"
     for link_from, link_to, link_label in links:
+        link_from = str(link_from).replace("[", "(").replace("]", ")")
+        link_to = str(link_to).replace("[", "(").replace("]", ")")
         all_links.add(f'[{link_from}] --> [{link_to}] : {link_label}"\n')
     for link in all_links:
         content += link

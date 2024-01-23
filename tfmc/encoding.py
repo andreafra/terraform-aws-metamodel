@@ -34,7 +34,13 @@ def encode_elements(elements: list[str], ctx: z3.Context):
 
 def encode_strings(attributes: list[Attribute], ctx: z3.Context):
     strings: list[str] = list(
-        set([str(x.value) for x in attributes if x.type == "string" and x.value])
+        set(
+            [
+                str(x.value)
+                for x in attributes
+                if x.type == "string" and x.value is not None
+            ]
+        )
     )
     return encode_to_enumsort(name="Strings", items=strings, ctx=ctx)
 
