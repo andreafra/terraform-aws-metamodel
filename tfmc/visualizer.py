@@ -65,21 +65,21 @@ def get_im_links(refs: Refs, nodes: list[str]) -> list[str]:
 
 def make_plantuml_diag(nodes, links):
     all_nodes = set()
-    ids = {}
-    id_counter = 0
+    all_links = set()
     content = "@startuml\n"
+    content += "left to right direction\n"
     for node in nodes:
         all_nodes.add(node)
     for link_from, link_to, _ in links:
         all_nodes.add(link_from)
         all_nodes.add(link_to)
     for node in all_nodes:
-        ids[node] = id_counter
-        id_counter += 1
-        content += f'object "{node}" as {ids[node]}\n'
+        content += "[node]\n"
     content += "\n"
     for link_from, link_to, link_label in links:
-        content += f'{ids[link_from]} --> {ids[link_to]} : {link_label}"\n'
+        all_links.add(f'[{link_from}] --> [{link_to}] : {link_label}"\n')
+    for link in all_links:
+        content += link
     content += "@enduml"
     return content
 
