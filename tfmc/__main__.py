@@ -103,6 +103,7 @@ if not args.skipwebserver:
             for p in files(assets.examples).iterdir()
             if p.is_dir() and p.name != "__pycache__"
         ]
+        _projects.sort()
         return render_template("projects.html", projects=_projects)
 
     @app.route("/<tfproj>")

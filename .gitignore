@@ -1,7 +1,6 @@
 ## Ignore LARGE FILES
 aws-schema.json
 # Import your own examples
-assets/examples
 
 # Don't commit cache
 assets/cache
@@ -206,3 +205,14 @@ cython_debug/
 .idea
 
 .output
+
+.terraform.lock.hcl
+
+assets/doml
+assets/examples/*
+!assets/examples/p_ericsson/
+!assets/examples/p_codewhisper/
+!assets/examples/p_gemini/
+!assets/examples/p_posidonia/
+!assets/examples/p_simpa/
+
